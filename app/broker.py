@@ -110,9 +110,7 @@ class Broker:
             else isolate_teams_per_node
         )
         self.idle_reaper_minutes = (
-            settings.idle_reaper_minutes
-            if idle_reaper_minutes is None
-            else idle_reaper_minutes
+            settings.idle_reaper_minutes if idle_reaper_minutes is None else idle_reaper_minutes
         )
         self.max_nodes = settings.max_nodes if max_nodes is None else max_nodes
         # Loaded from the DB (falling back to clock.now for a brand-new
@@ -155,11 +153,7 @@ class Broker:
         """Create a job, or return the existing one if ``client_key`` was
         already used (requirement 1's idempotency rule)."""
         if client_key:
-            existing = (
-                self.session.query(Job)
-                .filter(Job.client_key == client_key)
-                .one_or_none()
-            )
+            existing = self.session.query(Job).filter(Job.client_key == client_key).one_or_none()
             if existing is not None:
                 return existing
 
@@ -215,9 +209,7 @@ class Broker:
     def cancel_job(self, job_id: str) -> Job:
         job = self.get_job(job_id)
         if job.state not in ACTIVE_JOB_STATES:
-            raise InvalidJobStateError(
-                f"job {job_id} is already {job.state}, cannot cancel"
-            )
+            raise InvalidJobStateError(f"job {job_id} is already {job.state}, cannot cancel")
         now = self.clock.now
         if job.state == JobState.RUNNING:
             self._accrue_running_time(job, now)
@@ -254,14 +246,26 @@ class Broker:
         queued = self.session.query(Job).filter(Job.state == JobState.QUEUED).all()
         return scheduler.order_queue(self.session, queued, self.clock.now, self.policy)
 
+    def list_jobs(
+        self, *, states: list[JobState] | None = None, team: str | None = None
+    ) -> list[Job]:
+        """List jobs across any state(s), unlike :meth:`list_queue` which
+        only ever returns still-queued jobs (in scheduler order). Ordered
+        by submission time, oldest first -- there's no scheduler ordering
+        to apply once a job has left the queue."""
+        query = self.session.query(Job)
+        if states:
+            query = query.filter(Job.state.in_(states))
+        if team:
+            query = query.filter(Job.team == team)
+        return query.order_by(Job.submitted_at).all()
+
     def list_nodes(self) -> list[Node]:
         return self.session.query(Node).order_by(Node.launched_at).all()
 
     # ---- Internal job/node bookkeeping -------------------------------------
 
-    def _log_event(
-        self, job: Job, state: JobState, at: datetime, note: str | None = None
-    ) -> None:
+    def _log_event(self, job: Job, state: JobState, at: datetime, note: str | None = None) -> None:
         self.session.add(JobEvent(job_id=job.id, state=state, at=at, note=note))
 
     def _accrue_running_time(self, job: Job, now: datetime) -> None:
@@ -312,11 +316,7 @@ class Broker:
         # performance note).
         alive_nodes = (
             self.session.query(Node)
-            .filter(
-                Node.state.in_(
-                    [NodeState.BOOTING, NodeState.READY, NodeState.RECLAIMING]
-                )
-            )
+            .filter(Node.state.in_([NodeState.BOOTING, NodeState.READY, NodeState.RECLAIMING]))
             .count()
         )
         ordered = scheduler.order_queue(self.session, queued, now, self.policy)
@@ -339,10 +339,7 @@ class Broker:
                 continue
             if self.policy != SchedulingPolicy.LATENCY_FIRST:
                 node = scheduler.find_node_with_free_gpus(
-                    self.session,
-                    job.gpus_requested,
-                    job.team,
-                    self.isolate_teams_per_node,
+                    self.session, job.gpus_requested, job.team, self.isolate_teams_per_node
                 )
                 if node is not None:
                     self._place_job_on_node(job, node, now)
@@ -500,26 +497,20 @@ class Broker:
             if node.never_ready_deadline is not None:
                 candidates.append(node.never_ready_deadline)
 
-        for node in (
-            self.session.query(Node).filter(Node.state == NodeState.RECLAIMING).all()
-        ):
+        for node in self.session.query(Node).filter(Node.state == NodeState.RECLAIMING).all():
             if node.reclaim_at is not None:
                 candidates.append(node.reclaim_at)
 
         for job in self.session.query(Job).filter(Job.state == JobState.RUNNING).all():
             if job.started_at is not None:
-                candidates.append(
-                    job.started_at + timedelta(minutes=job.remaining_run_minutes)
-                )
+                candidates.append(job.started_at + timedelta(minutes=job.remaining_run_minutes))
 
         for node in (
             self.session.query(Node)
             .filter(Node.state == NodeState.READY, Node.empty_since.isnot(None))
             .all()
         ):
-            candidates.append(
-                node.empty_since + timedelta(minutes=self.idle_reaper_minutes)
-            )
+            candidates.append(node.empty_since + timedelta(minutes=self.idle_reaper_minutes))
 
         # Only bother waking up on a periodic heartbeat if there's
         # something it would actually need to check -- otherwise a huge
@@ -576,9 +567,7 @@ class Broker:
             node.state = NodeState.READY
             summary.nodes_ready.append(node.id)
 
-    def _process_node_never_ready(
-        self, when: datetime, summary: AdvanceSummary
-    ) -> None:
+    def _process_node_never_ready(self, when: datetime, summary: AdvanceSummary) -> None:
         due = (
             self.session.query(Node)
             .filter(
@@ -594,9 +583,7 @@ class Broker:
             billing.finalize_node_billing(self.session, node, when)
             summary.nodes_failed_never_ready.append(node.id)
 
-    def _process_reclaim_teardown(
-        self, when: datetime, summary: AdvanceSummary
-    ) -> None:
+    def _process_reclaim_teardown(self, when: datetime, summary: AdvanceSummary) -> None:
         due = (
             self.session.query(Node)
             .filter(Node.state == NodeState.RECLAIMING, Node.reclaim_at <= when)
@@ -614,10 +601,7 @@ class Broker:
                 job.state = JobState.QUEUED
                 job.requeue_count += 1
                 self._log_event(
-                    job,
-                    JobState.QUEUED,
-                    when,
-                    note="requeued: interruptible node reclaimed",
+                    job, JobState.QUEUED, when, note="requeued: interruptible node reclaimed"
                 )
                 summary.jobs_requeued_after_reclaim.append(job.id)
             node.state = NodeState.TERMINATED
@@ -646,18 +630,14 @@ class Broker:
                 summary.jobs_completed.append(job.id)
 
     def _process_idle_reaper(self, when: datetime, summary: AdvanceSummary) -> None:
-        for node in scheduler.find_idle_nodes_to_reap(
-            self.session, when, self.idle_reaper_minutes
-        ):
+        for node in scheduler.find_idle_nodes_to_reap(self.session, when, self.idle_reaper_minutes):
             node.state = NodeState.TERMINATED
             node.terminated_at = when
             billing.finalize_node_billing(self.session, node, when)
             summary.nodes_reaped_idle.append(node.id)
 
     def _process_heartbeat(self, when: datetime, summary: AdvanceSummary) -> None:
-        if when < self._last_heartbeat_at + timedelta(
-            minutes=HEARTBEAT_INTERVAL_MINUTES
-        ):
+        if when < self._last_heartbeat_at + timedelta(minutes=HEARTBEAT_INTERVAL_MINUTES):
             return
         self._last_heartbeat_at = when
         save_heartbeat_anchor(self.session, when)

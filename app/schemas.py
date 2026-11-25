@@ -36,10 +36,7 @@ class SubmitJobRequest(BaseModel):
         ),
     )
     estimated_minutes: float = Field(
-        ...,
-        gt=0,
-        examples=[30],
-        description="Your best guess at how long the job will run.",
+        ..., gt=0, examples=[30], description="Your best guess at how long the job will run."
     )
     priority: Priority = Field(
         default=Priority.NORMAL,
@@ -109,12 +106,16 @@ class NodeOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ResetResponse(BaseModel):
+    reset_at: datetime = Field(
+        ...,
+        description="The simulated clock's new current time after the reset (wall-clock UTC now).",
+    )
+
+
 class AdvanceRequest(BaseModel):
     minutes: float = Field(
-        ...,
-        gt=0,
-        examples=[10],
-        description="How many simulated minutes to jump forward.",
+        ..., gt=0, examples=[10], description="How many simulated minutes to jump forward."
     )
 
 

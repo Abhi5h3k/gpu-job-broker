@@ -311,6 +311,31 @@ different backend could be substituted later without touching the API
 layer -- without building that abstraction out further than today's single
 implementation actually needs.
  
+## 12. Dev convenience: job filtering and a reset endpoint
+ 
+Two additions outside the core requirements, added because they came up
+immediately while actually poking at the running service via Swagger:
+ 
+- **`GET /jobs?state=...&team=...`.** The original `GET /jobs` only ever
+  returned the live queue (jobs still `queued`, in scheduler order) --
+  there was no way to see `running`, `succeeded`, `failed`, or `cancelled`
+  jobs except one at a time via `GET /jobs/{id}`, and only if you already
+  had the id. `state` (repeatable) and `team` are optional query params
+  that, when present, search *all* jobs regardless of state, ordered by
+  submission time instead of scheduler order (scheduler ordering is only
+  meaningful for jobs still waiting in the queue). Omitting both filters
+  keeps the original queue-only behavior unchanged, so nothing existing
+  breaks.
+- **`POST /admin/reset`.** Restart-safety (requirement 7) is a deliberate
+  feature: state survives a process restart on purpose. That's correct for
+  a real deployment, but it means there was no way to get back to an empty
+  database while exploring the service via Swagger short of killing the
+  process and deleting `data/broker.db` by hand. This endpoint drops and
+  recreates every table and resets the clock and fake provider's RNG to a
+  fresh start -- the same end state as a cold start, reachable from inside
+  the running server. It's explicitly a dev/demo tool (no auth, no
+  confirmation, no undo), consistent with §5's security scope.
+ 
 ## Real bugs found while building this (and how)
  
 Worth stating plainly, since finding and fixing these is part of what

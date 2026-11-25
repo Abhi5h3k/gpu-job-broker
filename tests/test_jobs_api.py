@@ -147,6 +147,38 @@ def test_retrieval_search_returns_ranked_results(client):
     assert results[0]["score"] >= results[1]["score"] >= results[2]["score"]
 
 
+def test_list_jobs_defaults_to_queue_only(client):
+    done = submit(client, team="vision", estimated_minutes=5).json()
+    advance(client, 20)
+    assert client.get(f"/jobs/{done['id']}").json()["state"] == "succeeded"
+
+    # Nothing is queued anymore -- the default (no filters) listing should
+    # be empty, confirming it still only reflects the live queue, not every
+    # job ever submitted.
+    assert client.get("/jobs").json() == []
+
+
+def test_list_jobs_filters_by_state_across_all_jobs(client):
+    done = submit(client, estimated_minutes=5).json()
+    advance(client, 20)
+    cancelled = submit(client, estimated_minutes=5).json()
+    client.post(f"/jobs/{cancelled['id']}/cancel")
+
+    succeeded = client.get("/jobs", params={"state": "succeeded"}).json()
+    assert [j["id"] for j in succeeded] == [done["id"]]
+
+    multi = client.get("/jobs", params={"state": ["succeeded", "cancelled"]}).json()
+    assert {j["id"] for j in multi} == {done["id"], cancelled["id"]}
+
+
+def test_list_jobs_filters_by_team(client):
+    vision_job = submit(client, team="vision", estimated_minutes=5).json()
+    submit(client, team="nlp", estimated_minutes=5)
+
+    result = client.get("/jobs", params={"team": "vision", "state": "queued"}).json()
+    assert [j["id"] for j in result] == [vision_job["id"]]
+
+
 def test_gpu_count_outside_the_supported_sizes_is_rejected_at_the_door(client):
     """The schema only accepts the node catalog's sizes (1/2/4/8); anything
     else -- including a request bigger than the biggest node type -- is

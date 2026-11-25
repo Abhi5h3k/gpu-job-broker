@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.broker import Broker, InvalidJobStateError, JobNotFoundError
@@ -65,10 +65,7 @@ def _job_events(broker: Broker, job_id: str) -> list[dict]:
     from app.models import JobEvent
 
     events = (
-        broker.session.query(JobEvent)
-        .filter(JobEvent.job_id == job_id)
-        .order_by(JobEvent.at)
-        .all()
+        broker.session.query(JobEvent).filter(JobEvent.job_id == job_id).order_by(JobEvent.at).all()
     )
     return [{"state": e.state, "at": e.at, "note": e.note} for e in events]
 
@@ -116,12 +113,28 @@ def complete_job(
 @router.get(
     "",
     response_model=list[JobOut],
-    summary="List the current queue",
+    summary="List the queue, or filter jobs by state/team",
     description=(
-        "Queued jobs, in the exact order the scheduler would place them next -- priority and "
-        "aging (and, under the default Balanced policy, a per-team fairness tiebreaker) all "
-        "factor into this order. See docs/DESIGN.md for the full fairness policy."
+        "With no filters, returns queued jobs in the exact order the scheduler would place "
+        "them next -- priority and aging (and, under the default Balanced policy, a per-team "
+        "fairness tiebreaker) all factor into this order. See docs/DESIGN.md for the full "
+        "fairness policy.\n\n"
+        "Pass `state` (repeatable) and/or `team` to instead search *all* jobs regardless of "
+        "state -- e.g. `?state=succeeded&state=failed` to see everything that's finished, or "
+        "`?team=vision` for one team's full history. Filtered results are ordered by "
+        "submission time (oldest first), not scheduler order, since that ordering only applies "
+        "to jobs still waiting in the queue."
     ),
 )
-def list_queue(broker: Broker = Depends(_broker)) -> list[JobOut]:
-    return [JobOut.model_validate(j) for j in broker.list_queue()]
+def list_queue(
+    state: list[JobState] | None = Query(
+        default=None, description="Filter to one or more job states."
+    ),
+    team: str | None = Query(default=None, description="Filter to a single team."),
+    broker: Broker = Depends(_broker),
+) -> list[JobOut]:
+    if state or team:
+        jobs = broker.list_jobs(states=state, team=team)
+    else:
+        jobs = broker.list_queue()
+    return [JobOut.model_validate(j) for j in jobs]

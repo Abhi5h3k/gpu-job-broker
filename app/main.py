@@ -12,12 +12,12 @@ from __future__ import annotations
 
 import random
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 
-from app.api import costs, jobs, nodes, retrieval, simulator
+from app.api import admin, costs, jobs, nodes, retrieval, simulator
 from app.clock import load_clock
 from app.config import settings
 from app.db import SessionLocal, init_db
@@ -57,6 +57,10 @@ fast as you click "Execute" below.
 See `docs/DESIGN.md` in the repository for the reasoning behind every policy choice (fairness,
 interruptible nodes, idle-cost attribution, and the trace-replay policy comparison), and
 `README.md` for how to run the test suite and the trace replay from the command line.
+ 
+**Exploring via Swagger?** `GET /jobs?state=succeeded&state=failed` (etc.) lists jobs by state
+instead of just the live queue, and `POST /admin/reset` wipes everything back to a clean slate
+without restarting the process.
 """
 
 
@@ -65,9 +69,7 @@ async def lifespan(app: FastAPI):
     init_db()
     session = SessionLocal()
     try:
-        # Naive UTC on purpose: the clock and DB columns are timezone-naive.
-        default_start = datetime.now(UTC).replace(tzinfo=None)
-        app.state.clock = load_clock(session, default_start=default_start)
+        app.state.clock = load_clock(session, default_start=datetime.utcnow())
     finally:
         session.close()
     app.state.provider = FakeCloudProvider(rng=random.Random(settings.random_seed))
@@ -82,6 +84,7 @@ app = FastAPI(
 )
 
 app.include_router(guide_router)
+app.include_router(admin.router)
 app.include_router(jobs.router)
 app.include_router(nodes.router)
 app.include_router(simulator.router)
