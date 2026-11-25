@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.env
+ 
+# SQLite database files created at runtime (never commit live state)
+*.db
+*.db-journal
+data/broker.db
+ 
+# OS cruft
+.DS_Store
+Thumbs.db
+ 
