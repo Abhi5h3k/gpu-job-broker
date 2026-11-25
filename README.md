@@ -1,4 +1,9 @@
 # GPU Job Broker
+
+[![Live Demo: Guide](https://img.shields.io/badge/Live_Demo-Guide_(start_here)-2ea44f?style=for-the-badge)](https://gpu-job-broker.onrender.com/guide)
+[![Live Demo: API Docs](https://img.shields.io/badge/Live_Demo-API_Docs_(Swagger)-0969da?style=for-the-badge)](https://gpu-job-broker.onrender.com/docs#/)
+
+> **First load can take about a minute.** The hosted demo runs on Render's free tier, which spins down when idle. The first request after a quiet stretch can take **50 seconds or more** while it wakes up. If a page seems stuck, wait about a minute and refresh. The demo is shared, so everyone sees the same jobs and simulated clock, and it resets whenever the service is redeployed or restarted.
  
 A shared GPU job broker for a small AI research org: teams submit jobs, the
 broker schedules them onto simulated cloud nodes, controls cost (idle
@@ -26,17 +31,6 @@ approach, the clock model, and the real bugs found while building this) --
 `/guide`'s own "Full design rationale" section renders this exact document
 live, so there's nothing to keep in sync between them.
  
-## Live demo
-
-No install needed. The service is hosted on Render:
-
-- **Guide (start here):** https://gpu-job-broker.onrender.com/guide
-- **API reference (Swagger):** https://gpu-job-broker.onrender.com/docs#/
-
-> **Please be patient on first load.** The hosted instance runs on Render's free tier, which spins down after a period of inactivity. The first request after a quiet stretch can take **50 seconds or more** while it wakes up. If a page seems stuck, wait about a minute and refresh. It stays responsive until the next idle period.
-
-> The demo is shared: everyone using it sees the same jobs and the same simulated clock. Data resets whenever the service is redeployed or restarted.
-
 ## Quickstart
  
 Prerequisites: Python 3.10+ and [uv](https://docs.astral.sh/uv/).
