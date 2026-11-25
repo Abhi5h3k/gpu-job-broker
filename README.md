@@ -31,7 +31,7 @@ live, so there's nothing to keep in sync between them.
 Prerequisites: Python 3.10+ and [`uv`](https://docs.astral.sh/uv/).
  
 ```bash
-git clone <this repo>
+git clone https://github.com/Abhi5h3k/gpu-job-broker.git
 cd gpu-job-broker
 uv sync                              # installs everything into .venv, including dev/test deps
 uv run uvicorn app.main:app --reload # starts the API at http://127.0.0.1:8000

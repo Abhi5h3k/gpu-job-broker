@@ -381,7 +381,7 @@ footer {
         file at <code>data/broker.db</code>, created automatically on first run.
       </div>
       <h3>Clone, install, run</h3>
-      <pre><code>git clone &lt;this repo&gt;
+      <pre><code>git clone https://github.com/Abhi5h3k/gpu-job-broker.git
 cd gpu-job-broker
 uv sync                              # installs everything into .venv, including dev/test deps
 uv run uvicorn app.main:app --reload # starts the API at http://127.0.0.1:8000</code></pre>
