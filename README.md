@@ -26,9 +26,20 @@ approach, the clock model, and the real bugs found while building this) --
 `/guide`'s own "Full design rationale" section renders this exact document
 live, so there's nothing to keep in sync between them.
  
+## Live demo
+
+No install needed. The service is hosted on Render:
+
+- **Guide (start here):** https://gpu-job-broker.onrender.com/guide
+- **API reference (Swagger):** https://gpu-job-broker.onrender.com/docs#/
+
+> **Please be patient on first load.** The hosted instance runs on Render's free tier, which spins down after a period of inactivity. The first request after a quiet stretch can take **50 seconds or more** while it wakes up. If a page seems stuck, wait about a minute and refresh. It stays responsive until the next idle period.
+
+> The demo is shared: everyone using it sees the same jobs and the same simulated clock. Data resets whenever the service is redeployed or restarted.
+
 ## Quickstart
  
-Prerequisites: Python 3.10+ and [`uv`](https://docs.astral.sh/uv/).
+Prerequisites: Python 3.10+ and [uv](https://docs.astral.sh/uv/).
  
 ```bash
 git clone https://github.com/Abhi5h3k/gpu-job-broker.git
